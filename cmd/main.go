@@ -41,9 +41,11 @@ func main() {
 func welcomeNewClient(conn net.Conn) {
 	defer conn.Close()
 	name := askClientName(conn)
-	client := NewClient(name, conn)
+	NewClient(name, conn)
 }
 
+//TODO: what to with client?
+//give interface to chat
 func askClientName(conn net.Conn) string {
 	_, err := fmt.Fprint(conn, "Enter your name: ")
 	if err != nil {
