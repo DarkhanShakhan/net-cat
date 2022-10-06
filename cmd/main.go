@@ -35,7 +35,7 @@ func main() {
 	} else if len(os.Args) == 2 {
 		CONN_PORT = os.Args[1]
 	}
-	//creates listener
+	// creates listener
 	listener, err := net.Listen(CONN_TYPE, "localhost:"+CONN_PORT)
 	if err != nil {
 		log.Fatal(err)
@@ -44,9 +44,9 @@ func main() {
 
 	fmt.Printf("Listening on the port %s\n", CONN_PORT)
 	lobby := newLobby()
-	//broadcast messages
+	// broadcast messages
 	go lobby.parseSignal()
-	//starts accepting connections
+	// starts accepting connections
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
@@ -72,7 +72,7 @@ func askName(conn net.Conn) string {
 	return name[:len(name)-1]
 }
 
-//lobby
+// lobby
 
 type Lobby struct {
 	rooms       map[string]*Chatroom
@@ -85,7 +85,7 @@ func newLobby() *Lobby {
 	return &Lobby{rooms: map[string]*Chatroom{}, msgChannel: make(chan Message), cmdChannel: make(chan Command)}
 }
 
-//TODO:
+// TODO:
 // * deal with creating Chat
 // * deal with joining Chat
 func (lobby *Lobby) handleClient(conn net.Conn) {
@@ -114,7 +114,7 @@ func (lobby *Lobby) listChats(client *Client) {
 	}
 }
 
-//TODO: What other commands? join chatname, create chatname
+// TODO: What other commands? join chatname, create chatname
 func (lobby *Lobby) parseCommand(cmd Command) {
 	switch cmd.command {
 	case CMD_LIST:
@@ -126,7 +126,7 @@ func (lobby *Lobby) parseCommand(cmd Command) {
 	}
 }
 
-//TODO: errors to deal: writing command into lobby or chatroom, writing message into lobby
+// TODO: errors to deal: writing command into lobby or chatroom, writing message into lobby
 func (lobby *Lobby) broadcastMsg(msg Message) {
 	for key, otherClient := range msg.client.chatroom.clients {
 		if key != msg.client.conn.RemoteAddr().String() {
@@ -136,7 +136,7 @@ func (lobby *Lobby) broadcastMsg(msg Message) {
 	msg.client.chatroom.logMessage(msg.text)
 }
 
-//TODO: refactor the code
+// TODO: refactor the code
 func (lobby *Lobby) broadcastInfo(info Info) {
 	for key, otherClient := range info.client.chatroom.clients {
 		if key != info.client.conn.RemoteAddr().String() {
@@ -145,29 +145,30 @@ func (lobby *Lobby) broadcastInfo(info Info) {
 	}
 }
 
-//TODO: add mutexes
+// TODO: add mutexes
 func (lobby *Lobby) sendSignal(signal string, client *Client) {
 	switch {
 	case strings.HasPrefix(signal, CMD):
-		lobby,parseCommand(signal, client)
-		lobby.cmdChannel <- newCommand(signal, client)
+		lobby.sendCommand(signal, client)
+		// lobby.cmdChannel <- newCommand(signal, client)
 	default:
 		lobby.msgChannel <- newMessage(signal, client)
 	}
 }
 
-func (lobby *Lobby) parseCommand(command string, client *Client) {
+func (lobby *Lobby) sendCommand(command string, client *Client) {
 	temp := strings.Split(command, " ")
-	
+
 	switch len(temp) {
 	case 1:
 		lobby.cmdChannel <- newCommand(command, "", client)
 	case 2:
-		lobby.cmdChannel <- newCommand(temp[0], temp[1], client) 
+		lobby.cmdChannel <- newCommand(temp[0], temp[1], client)
 	}
 }
-//TODO: add welcome logo, prefixes
-//chatroom
+
+// TODO: add welcome logo, prefixes
+// chatroom
 type Chatroom struct {
 	clients map[string]*Client
 	log     string
@@ -196,6 +197,7 @@ func (room *Chatroom) broadcastInfo(info, name string) {
 		fmt.Fprintln(otherClient.conn, name+info)
 	}
 }
+
 func (room *Chatroom) listUsers(client *Client) {
 	for key, otherClient := range room.clients {
 		if key != client.conn.RemoteAddr().String() {
@@ -212,7 +214,7 @@ func (room *Chatroom) displayLog(client *Client) {
 	fmt.Fprintln(client.conn, room.log)
 }
 
-//client
+// client
 type Client struct {
 	name     string
 	chatroom *Chatroom
@@ -223,7 +225,7 @@ func newClient(name string, conn net.Conn) *Client {
 	return &Client{name: name, conn: conn}
 }
 
-//message
+// message
 type Message struct {
 	text   string
 	client *Client
@@ -233,19 +235,19 @@ func newMessage(text string, client *Client) Message {
 	return Message{text: text, client: client}
 }
 
-//command
+// command
 type Command struct {
 	command string
-	name    string //chatroom name
+	name    string // chatroom name
 	client  *Client
 }
 
-//TODO: add error to check command e.g.join chatname, create chatname etc. if more than two agruments, return error
-func newCommand(command string, client *Client) Command {
-	return Command{command: command, client: client}
+// TODO: add error to check command e.g.join chatname, create chatname etc. if more than two agruments, return error
+func newCommand(command string, name string, client *Client) Command {
+	return Command{command: command, name: name, client: client}
 }
 
-//info
+// info
 type Info struct {
 	text   string
 	client *Client
