@@ -149,12 +149,23 @@ func (lobby *Lobby) broadcastInfo(info Info) {
 func (lobby *Lobby) sendSignal(signal string, client *Client) {
 	switch {
 	case strings.HasPrefix(signal, CMD):
+		lobby,parseCommand(signal, client)
 		lobby.cmdChannel <- newCommand(signal, client)
 	default:
 		lobby.msgChannel <- newMessage(signal, client)
 	}
 }
 
+func (lobby *Lobby) parseCommand(command string, client *Client) {
+	temp := strings.Split(command, " ")
+	
+	switch len(temp) {
+	case 1:
+		lobby.cmdChannel <- newCommand(command, "", client)
+	case 2:
+		lobby.cmdChannel <- newCommand(temp[0], temp[1], client) 
+	}
+}
 //TODO: add welcome logo, prefixes
 //chatroom
 type Chatroom struct {
@@ -225,7 +236,7 @@ func newMessage(text string, client *Client) Message {
 //command
 type Command struct {
 	command string
-	name    string
+	name    string //chatroom name
 	client  *Client
 }
 
