@@ -26,6 +26,7 @@ const (
 	CMD_LIST   = CMD + "list"
 	CMD_LEAVE  = CMD + "leave"
 	CMD_USERS  = CMD + "users"
+	CMD_HELP   = CMD + "help"
 )
 
 var (
@@ -81,13 +82,14 @@ func askName(conn net.Conn) string {
 
 type Lobby struct {
 	rooms       map[string]*Chatroom
+	users       map[string]*Client
 	msgChannel  chan Message
 	cmdChannel  chan Command
 	infoChannel chan Info
 }
 
 func newLobby() *Lobby {
-	return &Lobby{rooms: map[string]*Chatroom{}, msgChannel: make(chan Message), cmdChannel: make(chan Command)}
+	return &Lobby{rooms: map[string]*Chatroom{}, users: map[string]*Client{}, msgChannel: make(chan Message), cmdChannel: make(chan Command)}
 }
 
 func (lobby *Lobby) handleClient(conn net.Conn) {
@@ -98,6 +100,7 @@ func (lobby *Lobby) handleClient(conn net.Conn) {
 	fmt.Fprintln(conn, LOGO)
 
 	client := newClient(askName(conn), conn)
+	lobby.users[client.name] = client
 	flow := bufio.NewScanner(client.conn)
 	for flow.Scan() {
 		signal := flow.Text()
@@ -106,6 +109,7 @@ func (lobby *Lobby) handleClient(conn net.Conn) {
 	if client.chatroom != nil {
 		client.chatroom.deleteClient(client)
 	}
+	delete(lobby.users, client.name)
 }
 
 func parseLogo() string {
@@ -139,7 +143,11 @@ func (lobby *Lobby) parseCommand(cmd Command) {
 	case CMD_LIST:
 		lobby.listChats(cmd.client)
 	case CMD_USERS:
-		cmd.client.chatroom.listUsers(cmd.client)
+		if cmd.client.chatroom != nil {
+			cmd.client.chatroom.listUsers(cmd.client)
+		} else {
+			lobby.listUsers(cmd.client)
+		}
 	case CMD_LEAVE:
 		cmd.client.chatroom.deleteClient(cmd.client)
 	case CMD_JOIN:
@@ -150,7 +158,18 @@ func (lobby *Lobby) parseCommand(cmd Command) {
 		}
 	case CMD_CREATE:
 		lobby.createChatroom(cmd.client, cmd.name)
+	case CMD_HELP:
+		lobby.listCommands(cmd.client)
+	}
+}
 
+func (lobby *Lobby) listUsers(client *Client) {
+	for name, user := range lobby.users {
+		fmt.Fprint(client.conn, name)
+		if user.chatroom != nil {
+			fmt.Fprint(client.conn, " -- "+user.chatroom.name)
+		}
+		fmt.Fprintln(client.conn, "")
 	}
 }
 
@@ -158,6 +177,17 @@ func (lobby *Lobby) parseCommand(cmd Command) {
 
 func (lobby *Lobby) createChatroom(client *Client, name string) {
 	lobby.rooms[name] = newChatroom(name, client)
+}
+
+func (lobby *Lobby) listCommands(client *Client) {
+	fmt.Fprintln(client.conn, CMD_LIST+" -> display all chatrooms.")
+	fmt.Fprintln(client.conn, CMD_CREATE+" roomName -> create a new chatroom with a given room name.")
+	fmt.Fprintln(client.conn, CMD_JOIN+" roomName -> join the given chatroom.")
+	fmt.Fprintln(client.conn, CMD_USERS+" -> list all users of the room or the lobby.")
+	fmt.Fprintln(client.conn, CMD_LEAVE+" -> leave the chatroom to the lobby.")
+	if client.chatroom != nil {
+		fmt.Fprint(client.conn, getPrefix(client.name))
+	}
 }
 
 func (lobby *Lobby) broadcastMsg(msg Message) {
