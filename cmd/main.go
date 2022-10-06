@@ -7,14 +7,15 @@ import (
 	"net"
 	"os"
 	"strings"
+	"time"
 )
 
 const (
-	CONN_TYPE = "tcp"
-	USAGE     = "[USAGE]: ./TCPChat $port"
-
-	INFO_LEAVE = " has left the chatroom"
-	INFO_JOIN  = " has joined the chatroom"
+	CONN_TYPE   = "tcp"
+	USAGE       = "[USAGE]: ./TCPChat $port"
+	TIME_FORMAT = "2006-01-02 15:04:05"
+	INFO_LEAVE  = " has left the chatroom"
+	INFO_JOIN   = " has joined the chatroom"
 )
 
 const (
@@ -85,9 +86,6 @@ func newLobby() *Lobby {
 	return &Lobby{rooms: map[string]*Chatroom{}, msgChannel: make(chan Message), cmdChannel: make(chan Command)}
 }
 
-// TODO:
-// * deal with creating Chat
-// * deal with joining Chat
 func (lobby *Lobby) handleClient(conn net.Conn) {
 	defer conn.Close()
 	fmt.Fprintln(conn, "Welcome to TCP chat!!!")
@@ -96,6 +94,9 @@ func (lobby *Lobby) handleClient(conn net.Conn) {
 	for flow.Scan() {
 		signal := flow.Text()
 		lobby.sendSignal(signal, client)
+	}
+	if client.chatroom != nil {
+		client.chatroom.deleteClient(client)
 	}
 }
 
@@ -142,10 +143,13 @@ func (lobby *Lobby) createChatroom(client *Client, name string) {
 func (lobby *Lobby) broadcastMsg(msg Message) {
 	for key, otherClient := range msg.client.chatroom.clients {
 		if key != msg.client.conn.RemoteAddr().String() {
-			fmt.Fprintln(otherClient.conn, msg.text)
+			fmt.Fprintln(otherClient.conn, msg.prefix+msg.text)
+			fmt.Fprint(otherClient.conn, msg.prefix)
+		} else {
+			fmt.Fprint(otherClient.conn, msg.prefix)
 		}
 	}
-	msg.client.chatroom.logMessage(msg.text)
+	msg.client.chatroom.logMessage(msg.prefix + msg.text)
 }
 
 // TODO: refactor the code
@@ -193,6 +197,7 @@ func newChatroom(name string, client *Client) *Chatroom {
 	chatroom := &Chatroom{name: name, clients: map[string]*Client{}, log: ""}
 	chatroom.clients[client.conn.RemoteAddr().String()] = client
 	client.chatroom = chatroom
+	fmt.Fprint(client.conn, getPrefix(client.name))
 	return chatroom
 }
 
@@ -224,6 +229,7 @@ func (room *Chatroom) listUsers(client *Client) {
 			fmt.Fprintln(client.conn, otherClient.name)
 		}
 	}
+	fmt.Fprint(client.conn, getPrefix(client.name))
 }
 
 func (room *Chatroom) logMessage(message string) {
@@ -258,10 +264,15 @@ func (client *Client) leaveChatroom() {
 type Message struct {
 	text   string
 	client *Client
+	prefix string
 }
 
 func newMessage(text string, client *Client) Message {
-	return Message{text: text, client: client}
+	return Message{text: text, prefix: getPrefix(client.name), client: client}
+}
+
+func getPrefix(name string) string {
+	return fmt.Sprintf("[%s][%s]:", time.Now().Format(TIME_FORMAT), name)
 }
 
 // command
