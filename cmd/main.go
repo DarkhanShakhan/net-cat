@@ -100,11 +100,13 @@ func (lobby *Lobby) handleClient(conn net.Conn) {
 }
 
 func (lobby *Lobby) parseSignal() {
-	select {
-	case cmd := <-lobby.cmdChannel:
-		lobby.parseCommand(cmd)
-	case msg := <-lobby.msgChannel:
-		lobby.broadcastMsg(msg)
+	for {
+		select {
+		case cmd := <-lobby.cmdChannel:
+			lobby.parseCommand(cmd)
+		case msg := <-lobby.msgChannel:
+			lobby.broadcastMsg(msg)
+		}
 	}
 }
 
@@ -123,10 +125,20 @@ func (lobby *Lobby) parseCommand(cmd Command) {
 		cmd.client.chatroom.listUsers(cmd.client)
 	case CMD_LEAVE:
 		cmd.client.chatroom.deleteClient(cmd.client)
+	case CMD_JOIN:
+		lobby.rooms[cmd.name].addClient(cmd.client)
+	case CMD_CREATE:
+		lobby.createChatroom(cmd.client, cmd.name)
+
 	}
 }
 
 // TODO: errors to deal: writing command into lobby or chatroom, writing message into lobby
+
+func (lobby *Lobby) createChatroom(client *Client, name string) {
+	lobby.rooms[name] = newChatroom(name, client)
+}
+
 func (lobby *Lobby) broadcastMsg(msg Message) {
 	for key, otherClient := range msg.client.chatroom.clients {
 		if key != msg.client.conn.RemoteAddr().String() {
@@ -152,7 +164,9 @@ func (lobby *Lobby) sendSignal(signal string, client *Client) {
 		lobby.sendCommand(signal, client)
 		// lobby.cmdChannel <- newCommand(signal, client)
 	default:
-		lobby.msgChannel <- newMessage(signal, client)
+		if signal != "" {
+			lobby.msgChannel <- newMessage(signal, client)
+		}
 	}
 }
 
@@ -170,17 +184,22 @@ func (lobby *Lobby) sendCommand(command string, client *Client) {
 // TODO: add welcome logo, prefixes
 // chatroom
 type Chatroom struct {
+	name    string
 	clients map[string]*Client
 	log     string
 }
 
-func newChatroom() *Chatroom {
-	return &Chatroom{}
+func newChatroom(name string, client *Client) *Chatroom {
+	chatroom := &Chatroom{name: name, clients: map[string]*Client{}, log: ""}
+	chatroom.clients[client.conn.RemoteAddr().String()] = client
+	client.chatroom = chatroom
+	return chatroom
 }
 
 func (room *Chatroom) addClient(client *Client) {
 	room.broadcastInfo(INFO_JOIN, client.name)
 	room.clients[client.conn.RemoteAddr().String()] = client
+	client.joinChatroom(room)
 }
 
 func (room *Chatroom) isFull() bool {
@@ -189,6 +208,7 @@ func (room *Chatroom) isFull() bool {
 
 func (room *Chatroom) deleteClient(client *Client) {
 	delete(room.clients, client.conn.RemoteAddr().String())
+	client.leaveChatroom()
 	room.broadcastInfo(INFO_LEAVE, client.name)
 }
 
@@ -207,11 +227,11 @@ func (room *Chatroom) listUsers(client *Client) {
 }
 
 func (room *Chatroom) logMessage(message string) {
-	room.log += message
+	room.log += message + "\n"
 }
 
 func (room *Chatroom) displayLog(client *Client) {
-	fmt.Fprintln(client.conn, room.log)
+	fmt.Fprint(client.conn, room.log)
 }
 
 // client
@@ -223,6 +243,15 @@ type Client struct {
 
 func newClient(name string, conn net.Conn) *Client {
 	return &Client{name: name, conn: conn}
+}
+
+func (client *Client) joinChatroom(chatroom *Chatroom) {
+	client.chatroom = chatroom
+	chatroom.displayLog(client)
+}
+
+func (client *Client) leaveChatroom() {
+	client.chatroom = nil
 }
 
 // message
