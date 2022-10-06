@@ -11,11 +11,12 @@ import (
 )
 
 const (
-	CONN_TYPE   = "tcp"
-	USAGE       = "[USAGE]: ./TCPChat $port"
-	TIME_FORMAT = "2006-01-02 15:04:05"
-	INFO_LEAVE  = " has left the chatroom"
-	INFO_JOIN   = " has joined the chatroom"
+	CONN_TYPE     = "tcp"
+	USAGE         = "[USAGE]: ./TCPChat $port"
+	TIME_FORMAT   = "2006-01-02 15:04:05"
+	INFO_LEAVE    = " has left the chatroom"
+	INFO_JOIN     = " has joined the chatroom"
+	LOGO_FILENAME = "cmd/logo.txt"
 )
 
 const (
@@ -27,7 +28,10 @@ const (
 	CMD_USERS  = CMD + "users"
 )
 
-var CONN_PORT = "8989"
+var (
+	CONN_PORT = "8989"
+	LOGO      = ""
+)
 
 func main() {
 	if len(os.Args) > 2 {
@@ -88,7 +92,11 @@ func newLobby() *Lobby {
 
 func (lobby *Lobby) handleClient(conn net.Conn) {
 	defer conn.Close()
-	fmt.Fprintln(conn, "Welcome to TCP chat!!!")
+	if LOGO == "" {
+		LOGO = parseLogo()
+	}
+	fmt.Fprintln(conn, LOGO)
+
 	client := newClient(askName(conn), conn)
 	flow := bufio.NewScanner(client.conn)
 	for flow.Scan() {
@@ -98,6 +106,14 @@ func (lobby *Lobby) handleClient(conn net.Conn) {
 	if client.chatroom != nil {
 		client.chatroom.deleteClient(client)
 	}
+}
+
+func parseLogo() string {
+	data, err := os.ReadFile(LOGO_FILENAME)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return string(data)
 }
 
 func (lobby *Lobby) parseSignal() {
@@ -143,8 +159,9 @@ func (lobby *Lobby) createChatroom(client *Client, name string) {
 func (lobby *Lobby) broadcastMsg(msg Message) {
 	for key, otherClient := range msg.client.chatroom.clients {
 		if key != msg.client.conn.RemoteAddr().String() {
+			fmt.Fprintln(otherClient.conn, "")
 			fmt.Fprintln(otherClient.conn, msg.prefix+msg.text)
-			fmt.Fprint(otherClient.conn, msg.prefix)
+			fmt.Fprint(otherClient.conn, getPrefix(otherClient.name))
 		} else {
 			fmt.Fprint(otherClient.conn, msg.prefix)
 		}
@@ -153,13 +170,14 @@ func (lobby *Lobby) broadcastMsg(msg Message) {
 }
 
 // TODO: refactor the code
-func (lobby *Lobby) broadcastInfo(info Info) {
-	for key, otherClient := range info.client.chatroom.clients {
-		if key != info.client.conn.RemoteAddr().String() {
-			fmt.Fprintln(otherClient.conn, info.client.name+info.text)
-		}
-	}
-}
+// func (lobby *Lobby) broadcastInfo(info Info) {
+// 	for key, otherClient := range info.client.chatroom.clients {
+// 		if key != info.client.conn.RemoteAddr().String() {
+// 			fmt.Fprintln(otherClient.conn, "")
+// 			fmt.Fprintln(otherClient.conn, info.client.name+info.text)
+// 		}
+// 	}
+// }
 
 // TODO: add mutexes
 func (lobby *Lobby) sendSignal(signal string, client *Client) {
@@ -219,16 +237,17 @@ func (room *Chatroom) deleteClient(client *Client) {
 
 func (room *Chatroom) broadcastInfo(info, name string) {
 	for _, otherClient := range room.clients {
-		fmt.Fprintln(otherClient.conn, getPrefix(otherClient.name)+name+info)
+		fmt.Fprintln(otherClient.conn, "")
+		fmt.Fprintln(otherClient.conn, name+info)
 		fmt.Fprint(otherClient.conn, getPrefix(otherClient.name))
 	}
 }
 
 func (room *Chatroom) listUsers(client *Client) {
-	for key, otherClient := range room.clients {
-		if key != client.conn.RemoteAddr().String() {
-			fmt.Fprintln(client.conn, otherClient.name)
-		}
+	for _, otherClient := range room.clients {
+		// if key != client.conn.RemoteAddr().String() {
+		fmt.Fprintln(client.conn, otherClient.name)
+		// }
 	}
 	fmt.Fprint(client.conn, getPrefix(client.name))
 }
@@ -255,6 +274,7 @@ func newClient(name string, conn net.Conn) *Client {
 func (client *Client) joinChatroom(chatroom *Chatroom) {
 	client.chatroom = chatroom
 	chatroom.displayLog(client)
+	fmt.Fprint(client.conn, getPrefix(client.name))
 }
 
 func (client *Client) leaveChatroom() {
