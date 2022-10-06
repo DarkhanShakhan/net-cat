@@ -27,6 +27,7 @@ const (
 	CMD_LEAVE  = CMD + "leave"
 	CMD_USERS  = CMD + "users"
 	CMD_HELP   = CMD + "help"
+	CMD_DIRECT = CMD + "direct"
 )
 
 var (
@@ -62,7 +63,7 @@ func main() {
 	}
 }
 
-func askName(conn net.Conn) string {
+func (lobby *Lobby) askName(conn net.Conn) string {
 	_, err := fmt.Fprint(conn, "Enter your name: ")
 	if err != nil {
 		log.Fatal(err)
@@ -73,7 +74,11 @@ func askName(conn net.Conn) string {
 	}
 	if name[:len(name)-1] == "" {
 		fmt.Fprintln(conn, "name cannot be empty")
-		return askName(conn)
+		return lobby.askName(conn)
+	}
+	if _, ok := lobby.users[name[:len(name)-1]]; ok {
+		fmt.Fprintln(conn, "name has been taken")
+		return lobby.askName(conn)
 	}
 	return name[:len(name)-1]
 }
@@ -99,7 +104,7 @@ func (lobby *Lobby) handleClient(conn net.Conn) {
 	}
 	fmt.Fprintln(conn, LOGO)
 
-	client := newClient(askName(conn), conn)
+	client := newClient(lobby.askName(conn), conn)
 	lobby.users[client.name] = client
 	flow := bufio.NewScanner(client.conn)
 	for flow.Scan() {
@@ -126,7 +131,11 @@ func (lobby *Lobby) parseSignal() {
 		case cmd := <-lobby.cmdChannel:
 			lobby.parseCommand(cmd)
 		case msg := <-lobby.msgChannel:
-			lobby.broadcastMsg(msg)
+			if msg.client.chatroom == nil {
+				fmt.Fprintln(msg.client.conn, "use commands in the lobby, starting with '/'\nyou can look all commands with '/help")
+			} else {
+				lobby.broadcastMsg(msg)
+			}
 		}
 	}
 }
@@ -137,7 +146,7 @@ func (lobby *Lobby) listChats(client *Client) {
 	}
 }
 
-// TODO: What other commands? join chatname, create chatname
+// TODO: What other commands? direct message
 func (lobby *Lobby) parseCommand(cmd Command) {
 	switch cmd.command {
 	case CMD_LIST:
@@ -147,6 +156,14 @@ func (lobby *Lobby) parseCommand(cmd Command) {
 			cmd.client.chatroom.listUsers(cmd.client)
 		} else {
 			lobby.listUsers(cmd.client)
+		}
+	case CMD_DIRECT:
+		to := lobby.users[cmd.name]
+		if cmd.client.chatroom != nil && cmd.client.chatroom == to.chatroom {
+			fmt.Fprintln(to.conn)
+			fmt.Fprintln(to.conn, "[DIRECT]"+cmd.message.prefix+cmd.message.text)
+			fmt.Fprint(cmd.client.conn, cmd.message.prefix)
+			fmt.Fprint(to.conn, cmd.message.prefix)
 		}
 	case CMD_LEAVE:
 		cmd.client.chatroom.deleteClient(cmd.client)
@@ -173,26 +190,32 @@ func (lobby *Lobby) listUsers(client *Client) {
 	}
 }
 
-// TODO: errors to deal: writing command into lobby or chatroom, writing message into lobby
+// TODO: errors with command and arguments
 
 func (lobby *Lobby) createChatroom(client *Client, name string) {
-	lobby.rooms[name] = newChatroom(name, client)
+	if _, ok := lobby.rooms[name]; ok {
+		fmt.Fprintln(client.conn, "The chat with a given name exists")
+	} else {
+		lobby.rooms[name] = newChatroom(name, client)
+	}
 }
 
 func (lobby *Lobby) listCommands(client *Client) {
-	fmt.Fprintln(client.conn, CMD_LIST+" -> display all chatrooms.")
-	fmt.Fprintln(client.conn, CMD_CREATE+" roomName -> create a new chatroom with a given room name.")
-	fmt.Fprintln(client.conn, CMD_JOIN+" roomName -> join the given chatroom.")
-	fmt.Fprintln(client.conn, CMD_USERS+" -> list all users of the room or the lobby.")
-	fmt.Fprintln(client.conn, CMD_LEAVE+" -> leave the chatroom to the lobby.")
-	if client.chatroom != nil {
+	if client.chatroom == nil {
+		fmt.Fprintln(client.conn, CMD_LIST+" -> display all chatrooms.")
+		fmt.Fprintln(client.conn, CMD_CREATE+" roomName -> create a new chatroom with a given room name.")
+		fmt.Fprintln(client.conn, CMD_JOIN+" roomName -> join the given chatroom.")
+		fmt.Fprintln(client.conn, CMD_USERS+" -> list all users.")
+	} else {
+		fmt.Fprintln(client.conn, CMD_USERS+" -> list all users in the chat.")
+		fmt.Fprintln(client.conn, CMD_LEAVE+" -> leave the chatroom to the lobby.")
 		fmt.Fprint(client.conn, getPrefix(client.name))
 	}
 }
 
 func (lobby *Lobby) broadcastMsg(msg Message) {
 	for key, otherClient := range msg.client.chatroom.clients {
-		if key != msg.client.conn.RemoteAddr().String() {
+		if key != msg.client.name {
 			fmt.Fprintln(otherClient.conn, "")
 			fmt.Fprintln(otherClient.conn, msg.prefix+msg.text)
 			fmt.Fprint(otherClient.conn, getPrefix(otherClient.name))
@@ -218,7 +241,6 @@ func (lobby *Lobby) sendSignal(signal string, client *Client) {
 	switch {
 	case strings.HasPrefix(signal, CMD):
 		lobby.sendCommand(signal, client)
-		// lobby.cmdChannel <- newCommand(signal, client)
 	default:
 		if signal != "" {
 			lobby.msgChannel <- newMessage(signal, client)
@@ -231,9 +253,11 @@ func (lobby *Lobby) sendCommand(command string, client *Client) {
 
 	switch len(temp) {
 	case 1:
-		lobby.cmdChannel <- newCommand(command, "", client)
+		lobby.cmdChannel <- newCommand(command, "", client, Message{})
 	case 2:
-		lobby.cmdChannel <- newCommand(temp[0], temp[1], client)
+		lobby.cmdChannel <- newCommand(temp[0], temp[1], client, Message{})
+	case 3:
+		lobby.cmdChannel <- newCommand(temp[0], temp[1], client, newMessage(temp[2], client))
 	}
 }
 
@@ -245,7 +269,7 @@ type Chatroom struct {
 
 func newChatroom(name string, client *Client) *Chatroom {
 	chatroom := &Chatroom{name: name, clients: map[string]*Client{}, log: ""}
-	chatroom.clients[client.conn.RemoteAddr().String()] = client
+	chatroom.clients[client.name] = client
 	client.chatroom = chatroom
 	fmt.Fprint(client.conn, getPrefix(client.name))
 	return chatroom
@@ -253,7 +277,7 @@ func newChatroom(name string, client *Client) *Chatroom {
 
 func (room *Chatroom) addClient(client *Client) {
 	room.broadcastInfo(INFO_JOIN, client.name)
-	room.clients[client.conn.RemoteAddr().String()] = client
+	room.clients[client.name] = client
 	client.joinChatroom(room)
 }
 
@@ -262,7 +286,7 @@ func (room *Chatroom) isFull() bool {
 }
 
 func (room *Chatroom) deleteClient(client *Client) {
-	delete(room.clients, client.conn.RemoteAddr().String())
+	delete(room.clients, client.name)
 	client.leaveChatroom()
 	room.broadcastInfo(INFO_LEAVE, client.name)
 }
@@ -276,10 +300,8 @@ func (room *Chatroom) broadcastInfo(info, name string) {
 }
 
 func (room *Chatroom) listUsers(client *Client) {
-	for _, otherClient := range room.clients {
-		// if key != client.conn.RemoteAddr().String() {
-		fmt.Fprintln(client.conn, otherClient.name)
-		// }
+	for name := range room.clients {
+		fmt.Fprintln(client.conn, name)
 	}
 	fmt.Fprint(client.conn, getPrefix(client.name))
 }
@@ -331,14 +353,13 @@ func getPrefix(name string) string {
 // command
 type Command struct {
 	command string
-	name    string // chatroom name
+	name    string
+	message Message
 	client  *Client
 }
 
-// TODO: add error to check command e.g.join chatname, create chatname etc. if more than two agruments, return error
-// TODO: limit to 10 clients per chat
-func newCommand(command string, name string, client *Client) Command {
-	return Command{command: command, name: name, client: client}
+func newCommand(command string, name string, client *Client, message Message) Command {
+	return Command{command: command, name: name, client: client, message: message}
 }
 
 // info
