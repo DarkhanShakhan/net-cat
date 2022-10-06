@@ -143,7 +143,11 @@ func (lobby *Lobby) parseCommand(cmd Command) {
 	case CMD_LEAVE:
 		cmd.client.chatroom.deleteClient(cmd.client)
 	case CMD_JOIN:
-		lobby.rooms[cmd.name].addClient(cmd.client)
+		if lobby.rooms[cmd.name].isFull() {
+			fmt.Fprintln(cmd.client.conn, "The Chat is full, join later or create a new one")
+		} else {
+			lobby.rooms[cmd.name].addClient(cmd.client)
+		}
 	case CMD_CREATE:
 		lobby.createChatroom(cmd.client, cmd.name)
 
@@ -203,8 +207,6 @@ func (lobby *Lobby) sendCommand(command string, client *Client) {
 	}
 }
 
-// TODO: add welcome logo, prefixes
-// chatroom
 type Chatroom struct {
 	name    string
 	clients map[string]*Client
@@ -304,6 +306,7 @@ type Command struct {
 }
 
 // TODO: add error to check command e.g.join chatname, create chatname etc. if more than two agruments, return error
+// TODO: limit to 10 clients per chat
 func newCommand(command string, name string, client *Client) Command {
 	return Command{command: command, name: name, client: client}
 }
