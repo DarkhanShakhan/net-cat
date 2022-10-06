@@ -219,7 +219,8 @@ func (room *Chatroom) deleteClient(client *Client) {
 
 func (room *Chatroom) broadcastInfo(info, name string) {
 	for _, otherClient := range room.clients {
-		fmt.Fprintln(otherClient.conn, name+info)
+		fmt.Fprintln(otherClient.conn, getPrefix(otherClient.name)+name+info)
+		fmt.Fprint(otherClient.conn, getPrefix(otherClient.name))
 	}
 }
 
