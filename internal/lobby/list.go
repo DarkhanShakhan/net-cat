@@ -13,6 +13,8 @@ func (lobby *Lobby) ListChats(user i.User) {
 }
 
 func (lobby *Lobby) ListUsers(user i.User) {
+	lobby.mu.Lock()
+	defer lobby.mu.Unlock()
 	for name, otherUser := range lobby.users {
 		fmt.Fprint(user.GetConn(), name)
 		if name, ok := otherUser.GetRoomName(); ok {
