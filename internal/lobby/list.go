@@ -13,10 +13,10 @@ func (lobby *Lobby) ListChats(user i.User) {
 }
 
 func (lobby *Lobby) ListUsers(user i.User) {
-	for name := range lobby.users {
+	for name, otherUser := range lobby.users {
 		fmt.Fprint(user.GetConn(), name)
-		if name, ok := user.GetRoomName(); ok {
-			fmt.Fprint(user.GetConn(), " -- "+lobby.GetChatroom(name).GetChatName())
+		if name, ok := otherUser.GetRoomName(); ok {
+			fmt.Fprint(user.GetConn(), " --> "+lobby.GetChatroom(name).GetChatName())
 		}
 		fmt.Fprintln(user.GetConn(), "")
 	}

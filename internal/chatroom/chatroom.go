@@ -35,6 +35,7 @@ func (room *Chatroom) AddUser(user i.User) {
 	room.broadcastInfo(INFO_JOIN, user.GetName())
 	room.users[user.GetName()] = user
 	user.SetRoomName(room.name)
+	room.DisplayLog(user)
 	fmt.Fprint(user.GetConn(), service.GetPrefix(user.GetName()))
 }
 
@@ -58,7 +59,8 @@ func (room *Chatroom) broadcastInfo(info, name string) {
 
 func (room *Chatroom) ListUsers(user i.User) {
 	for name := range room.users {
-		fmt.Fprintln(user.GetConn(), name)
+		fmt.Fprint(user.GetConn(), name)
+		fmt.Fprintln(user.GetConn())
 	}
 	fmt.Fprint(user.GetConn(), service.GetPrefix(user.GetName()))
 }

@@ -28,6 +28,7 @@ func NewCommand(command string, name string, user i.User, message Message) Comma
 	return Command{command: command, name: name, user: user, message: message}
 }
 
+// FIXME: parsing commands and replying to invalid commands
 func (lobby *Lobby) SendCommand(command string, user i.User) {
 	temp := strings.Split(command, " ")
 
@@ -37,9 +38,14 @@ func (lobby *Lobby) SendCommand(command string, user i.User) {
 	case 2:
 		lobby.cmdChannel <- NewCommand(temp[0], temp[1], user, Message{})
 	case 3:
-		lobby.cmdChannel <- NewCommand(temp[0], temp[1], user, NewMessage(temp[2], user))
+		lobby.cmdChannel <- NewCommand(temp[0], temp[1], user, NewMessage(strings.Join(temp[2:], " "), user))
 	}
 }
+
+// func (lobby *Lobby) validCommand(command string, user i.User) bool {
+// 	switch {
+// 	}
+// }
 
 func (lobby *Lobby) ParseCommand(cmd Command) {
 	switch cmd.command {
@@ -65,7 +71,10 @@ func (lobby *Lobby) ParseCommand(cmd Command) {
 		name, _ := cmd.user.GetRoomName()
 		lobby.GetChatroom(name).DeleteUser(cmd.user)
 	case CMD_JOIN:
-		if lobby.rooms[cmd.name].IsFull() {
+		room, ok := lobby.rooms[cmd.name]
+		if !ok {
+			fmt.Fprintln(cmd.user.GetConn(), "the chat with a given name doesn't exist, but you can create one using command /create roomname")
+		} else if room.IsFull() {
 			fmt.Fprintln(cmd.user.GetConn(), "The Chat is full, join later or create a new one")
 		} else {
 			lobby.rooms[cmd.name].AddUser(cmd.user)
