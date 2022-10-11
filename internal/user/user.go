@@ -10,8 +10,6 @@ type User struct {
 	conn net.Conn
 }
 
-//TODO: unit test
-
 func NewUser(name string, conn net.Conn) *User {
 	return &User{name: name, conn: conn}
 }
