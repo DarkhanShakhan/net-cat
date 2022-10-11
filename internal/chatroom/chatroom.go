@@ -11,7 +11,7 @@ const (
 	INFO_JOIN  = " has joined the chatroom"
 )
 
-//TODO:unit test
+// TODO:unit test
 type Chatroom struct {
 	name  string
 	users map[string]i.User
@@ -30,10 +30,12 @@ func (room *Chatroom) GetChatName() string {
 func (room *Chatroom) GetUsers() map[string]i.User {
 	return room.users
 }
+
 func (room *Chatroom) AddUser(user i.User) {
 	room.broadcastInfo(INFO_JOIN, user.GetName())
 	room.users[user.GetName()] = user
 	user.SetRoomName(room.name)
+	fmt.Fprint(user.GetConn(), service.GetPrefix(user.GetName()))
 }
 
 func (room *Chatroom) IsFull() bool {

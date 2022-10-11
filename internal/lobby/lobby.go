@@ -11,12 +11,10 @@ import (
 	i "net-cat/internal/userInterface"
 )
 
-var (
-	LOGO = ""
-)
+var LOGO = ""
 
-//TODO: handle errors
-//TODO: unit tests
+// TODO: handle errors
+// TODO: unit tests
 type Lobby struct {
 	rooms      map[string]Chatroom
 	users      map[string]i.User
