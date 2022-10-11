@@ -41,6 +41,6 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		go lobby.HandleClient(conn)
+		go lobby.HandleUser(conn)
 	}
 }

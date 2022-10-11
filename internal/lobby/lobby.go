@@ -26,7 +26,7 @@ func NewLobby() *Lobby {
 	return &Lobby{rooms: map[string]Chatroom{}, users: map[string]i.User{}, msgChannel: make(chan Message), cmdChannel: make(chan Command)}
 }
 
-func (lobby *Lobby) HandleClient(conn net.Conn) {
+func (lobby *Lobby) HandleUser(conn net.Conn) {
 	defer conn.Close()
 	if LOGO == "" {
 		LOGO = service.ParseLogo()
