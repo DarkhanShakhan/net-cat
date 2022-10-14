@@ -1,7 +1,6 @@
 package chatroom
 
 import (
-	"fmt"
 	"net-cat/internal/service"
 	i "net-cat/internal/userInterface"
 )
@@ -36,7 +35,8 @@ func (room *Chatroom) AddUser(user i.User) {
 	room.users[user.GetName()] = user
 	user.SetRoomName(room.name)
 	room.DisplayLog(user)
-	fmt.Fprint(user.GetConn(), service.GetPrefix(user.GetName()))
+
+	user.GetConn().Write([]byte(service.GetPrefix(user.GetName())))
 }
 
 func (room *Chatroom) IsFull() bool {
@@ -51,18 +51,18 @@ func (room *Chatroom) DeleteUser(user i.User) {
 
 func (room *Chatroom) broadcastInfo(info, name string) {
 	for _, user := range room.users {
-		fmt.Fprintln(user.GetConn(), "")
-		fmt.Fprintln(user.GetConn(), name+info)
-		fmt.Fprint(user.GetConn(), service.GetPrefix(user.GetName()))
+		user.GetConn().Write([]byte("\n"))
+		user.GetConn().Write([]byte(name + info + "\n"))
+		user.GetConn().Write([]byte(service.GetPrefix(user.GetName())))
 	}
 }
 
 func (room *Chatroom) ListUsers(user i.User) {
 	for name := range room.users {
-		fmt.Fprint(user.GetConn(), name)
-		fmt.Fprintln(user.GetConn())
+		user.GetConn().Write([]byte(name))
+		user.GetConn().Write([]byte("\n"))
 	}
-	fmt.Fprint(user.GetConn(), service.GetPrefix(user.GetName()))
+	user.GetConn().Write([]byte(service.GetPrefix(user.GetName()) + "\n"))
 }
 
 func (room *Chatroom) LogMessage(message string) {
@@ -70,5 +70,5 @@ func (room *Chatroom) LogMessage(message string) {
 }
 
 func (room *Chatroom) DisplayLog(user i.User) {
-	fmt.Fprint(user.GetConn(), room.log)
+	user.GetConn().Write([]byte(room.log))
 }

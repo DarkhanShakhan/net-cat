@@ -21,15 +21,15 @@ func Read(conn net.Conn) {
 	reader := bufio.NewReader(conn)
 	scanner := bufio.NewScanner(reader)
 	for scanner.Scan() {
-		text := scanner.Bytes()
+		// text := scanner.Bytes()
 
-		// str, err := reader.ReadString('\n')
-		// if err != nil {
-		// 	fmt.Printf(MSG_DISCONNECT)
-		// 	wg.Done()
-		// 	return
-		// }
-		fmt.Print(string(text))
+		str, err := reader.ReadString('\n')
+		if err != nil {
+			fmt.Printf(MSG_DISCONNECT)
+			wg.Done()
+			return
+		}
+		fmt.Print(str)
 	}
 }
 
@@ -58,7 +58,7 @@ func Write(conn net.Conn) {
 }
 
 func main() {
-	// wg.Add(1)
+	wg.Add(1)
 	conn, err := net.Dial(CONN_TYPE, CONN_PORT)
 	defer conn.Close()
 	if err != nil {
@@ -66,9 +66,9 @@ func main() {
 	}
 	PrintLogo(conn)
 	// PrintName(conn)
-	// go Read(conn)
-	// go Write(conn)
-	// wg.Wait()
+	go Read(conn)
+	go Write(conn)
+	wg.Wait()
 }
 
 func PrintLogo(conn net.Conn) {

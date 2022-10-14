@@ -1,7 +1,6 @@
 package lobby
 
 import (
-	"fmt"
 	"net-cat/internal/service"
 	i "net-cat/internal/userInterface"
 )
@@ -21,11 +20,11 @@ func (lobby *Lobby) BroadcastMsg(msg Message) {
 	chat := lobby.GetChatroom(name)
 	for key, otherUser := range chat.GetUsers() {
 		if key != msg.user.GetName() {
-			fmt.Fprintln(otherUser.GetConn(), "")
-			fmt.Fprintln(otherUser.GetConn(), msg.prefix+msg.text)
-			fmt.Fprint(otherUser.GetConn(), service.GetPrefix(otherUser.GetName()))
+			otherUser.GetConn().Write([]byte("\n"))
+			otherUser.GetConn().Write([]byte(msg.prefix + msg.text + "\n"))
+			otherUser.GetConn().Write([]byte(service.GetPrefix(otherUser.GetName())))
 		} else {
-			fmt.Fprint(otherUser.GetConn(), msg.prefix)
+			otherUser.GetConn().Write([]byte(msg.prefix))
 		}
 	}
 	chat.LogMessage(msg.prefix + msg.text)
