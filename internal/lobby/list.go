@@ -16,9 +16,9 @@ func (lobby *Lobby) ListUsers(user i.User) {
 	lobby.mu.Lock()
 	defer lobby.mu.Unlock()
 	for name, otherUser := range lobby.users {
-		fmt.Fprint(user.GetConn(), name)
+		user.GetConn().Write([]byte(name))
 		if name, ok := otherUser.GetRoomName(); ok {
-			fmt.Fprint(user.GetConn(), " --> "+lobby.GetChatroom(name).GetChatName())
+			user.GetConn().Write([]byte(" --> " + lobby.GetChatroom(name).GetChatName()))
 		}
 		fmt.Fprintln(user.GetConn(), "")
 	}

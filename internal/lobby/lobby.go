@@ -2,7 +2,6 @@ package lobby
 
 import (
 	"bufio"
-	"fmt"
 	"log"
 	"net"
 	"net-cat/internal/chatroom"
@@ -16,7 +15,7 @@ var LOGO = ""
 
 // TODO: handle errors
 // TODO: unit tests
-//TODO: mutexes
+// TODO: mutexes
 type Lobby struct {
 	mu         sync.Mutex
 	rooms      map[string]Chatroom
@@ -31,13 +30,9 @@ func NewLobby() *Lobby {
 
 func (lobby *Lobby) HandleUser(conn net.Conn) {
 	defer conn.Close()
-	// if LOGO == "" {
-	// 	LOGO = service.ParseLogo()
-	// }
-	// fmt.Fprintln(conn, LOGO)
-	lobby.PrintLogo(conn)
-	user := user.NewUser(lobby.AskName(conn), conn)
-	// lobby.users[user.GetName()] = user
+	username := lobby.PrintLogo(conn)
+	// username := lobby.AskName(conn)
+	user := user.NewUser(username, conn)
 	lobby.AddUser(user)
 	flow := bufio.NewScanner(conn)
 	for flow.Scan() {
@@ -58,30 +53,30 @@ func (lobby *Lobby) AddUser(user i.User) {
 	lobby.mu.Unlock()
 }
 
-func (lobby *Lobby) PrintLogo(conn net.Conn) {
+func (lobby *Lobby) PrintLogo(conn net.Conn) string {
 	lobby.mu.Lock()
 	if LOGO == "" {
 		LOGO = service.ParseLogo()
 	}
-	fmt.Fprintln(conn, LOGO)
+	conn.Write([]byte(LOGO + "\n"))
+	// name := lobby.AskName(conn)
 	lobby.mu.Unlock()
+	name := lobby.AskName(conn)
+	return name
 }
 
 func (lobby *Lobby) AskName(conn net.Conn) string {
-	_, err := fmt.Fprint(conn, "Enter your name: ")
-	if err != nil {
-		log.Fatal(err)
-	}
+	conn.Write([]byte("Enter your name: "))
 	name, err := bufio.NewReader(conn).ReadString('\n')
 	if err != nil {
 		log.Fatal(err)
 	}
 	if name[:len(name)-1] == "" {
-		fmt.Fprintln(conn, "name cannot be empty")
+		conn.Write([]byte("name cannot be empty\n"))
 		return lobby.AskName(conn)
 	}
 	if lobby.UserExist(name) {
-		fmt.Fprintln(conn, "name has been taken")
+		conn.Write([]byte("name has been taken"))
 		return lobby.AskName(conn)
 	}
 	return name[:len(name)-1]

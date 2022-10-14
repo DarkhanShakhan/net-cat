@@ -73,15 +73,15 @@ func (lobby *Lobby) ParseCommand(cmd Command) {
 	case CMD_JOIN:
 		room, ok := lobby.rooms[cmd.name]
 		if !ok {
-			fmt.Fprintln(cmd.user.GetConn(), "the chat with a given name doesn't exist, but you can create one using command /create roomname")
+			cmd.user.GetConn().Write([]byte("the chat with a given name doesn't exist, but you can create one using command /create roomname\n"))
 		} else if room.IsFull() {
-			fmt.Fprintln(cmd.user.GetConn(), "The Chat is full, join later or create a new one")
+			cmd.user.GetConn().Write([]byte("The Chat is full, join later or create a new one\n"))
 		} else {
 			lobby.rooms[cmd.name].AddUser(cmd.user)
 		}
 	case CMD_CREATE:
 		if !lobby.CreateChatroom(cmd.name) {
-			fmt.Fprintln(cmd.user.GetConn(), "The chat with a given name exists")
+			cmd.user.GetConn().Write([]byte("The chat with a given name exists\n"))
 		} else {
 			lobby.GetChatroom(cmd.name).AddUser(cmd.user)
 		}
