@@ -58,12 +58,39 @@ func Write(conn net.Conn) {
 }
 
 func main() {
-	wg.Add(1)
+	// wg.Add(1)
 	conn, err := net.Dial(CONN_TYPE, CONN_PORT)
+	defer conn.Close()
 	if err != nil {
 		fmt.Println(err)
 	}
-	go Read(conn)
-	go Write(conn)
-	wg.Wait()
+	PrintLogo(conn)
+	// PrintName(conn)
+	// go Read(conn)
+	// go Write(conn)
+	// wg.Wait()
 }
+
+func PrintLogo(conn net.Conn) {
+	reader := bufio.NewReader(conn)
+	for i := 0; i < 17; i++ {
+		line, _ := reader.ReadString('\n')
+		fmt.Print(line)
+	}
+	askname, _ := reader.ReadString(':')
+	fmt.Print(askname)
+	readstdin := bufio.NewReader(os.Stdin)
+	name, _ := readstdin.ReadString('\n')
+	conn.Write([]byte(name))
+}
+
+// func PrintName(conn net.Conn) {
+// 	reader := bufio.NewReader(conn)
+// 	readstdin := bufio.NewReader(os.Stdin)
+// 	askname, err := reader.ReadString('\n')
+// 	fmt.Println(err)
+// 	fmt.Println("here")
+// 	fmt.Print(askname)
+// 	name, _ := readstdin.ReadString('\n')
+// 	conn.Write([]byte(name))
+// }

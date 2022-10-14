@@ -30,8 +30,8 @@ func NewLobby() *Lobby {
 
 func (lobby *Lobby) HandleUser(conn net.Conn) {
 	defer conn.Close()
-	username := lobby.PrintLogo(conn)
-	// username := lobby.AskName(conn)
+	lobby.PrintLogo(conn)
+	username := lobby.AskName(conn)
 	user := user.NewUser(username, conn)
 	lobby.AddUser(user)
 	flow := bufio.NewScanner(conn)
@@ -53,20 +53,17 @@ func (lobby *Lobby) AddUser(user i.User) {
 	lobby.mu.Unlock()
 }
 
-func (lobby *Lobby) PrintLogo(conn net.Conn) string {
-	lobby.mu.Lock()
+func (lobby *Lobby) PrintLogo(conn net.Conn) {
+	// lobby.mu.Lock()
 	if LOGO == "" {
 		LOGO = service.ParseLogo()
 	}
 	conn.Write([]byte(LOGO + "\n"))
-	// name := lobby.AskName(conn)
-	lobby.mu.Unlock()
-	name := lobby.AskName(conn)
-	return name
+	// lobby.mu.Unlock()
 }
 
 func (lobby *Lobby) AskName(conn net.Conn) string {
-	conn.Write([]byte("Enter your name: "))
+	conn.Write([]byte("Enter your name:"))
 	name, err := bufio.NewReader(conn).ReadString('\n')
 	if err != nil {
 		log.Fatal(err)
