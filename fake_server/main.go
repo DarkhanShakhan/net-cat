@@ -12,14 +12,16 @@ func main() {
 	defer listener.Close()
 	for {
 		conn, _ := listener.Accept()
-		h := &handler{conn: conn}
+		h := &handler{conn: conn, writer: bufio.NewWriter(conn), reader: bufio.NewReader(conn)}
 		go h.HandleClient()
 	}
 }
 
 type handler struct {
-	conn net.Conn
-	name string
+	conn   net.Conn
+	name   string
+	writer *bufio.Writer
+	reader *bufio.Reader
 }
 
 func (h *handler) HandleClient() {
@@ -27,15 +29,26 @@ func (h *handler) HandleClient() {
 	scanner := bufio.NewScanner(h.conn)
 	for scanner.Scan() {
 		msg := scanner.Text()
+		if msg == "/list" {
+			h.writer.WriteString("3 chat(s) available\n")
+			h.writer.WriteString("chat1\nchat2\nchat3\n")
+			h.writer.Flush()
+		} else if msg == "/users" {
+			h.writer.WriteString("2 users(s) are online\n")
+			h.writer.WriteString("user1\n")
+			h.writer.WriteString("user2\n")
+			h.writer.Flush()
+		}
 		fmt.Println(msg)
 	}
 }
 
 func (h *handler) AskName() {
-	h.conn.Write([]byte(service.ParseLogo() + "\n"))
-	h.conn.Write([]byte("Enter your name:"))
-	h.name, _ = bufio.NewReader(h.conn).ReadString('\n')
-	h.conn.Write([]byte("Welcome, " + h.name))
+	h.writer.WriteString(service.ParseLogo() + "\n")
+	h.writer.WriteString("Enter your name:")
+	h.writer.Flush()
+	h.name, _ = h.reader.ReadString('\n')
+	fmt.Print(h.name)
 
 }
 func Write(conn net.Conn) {

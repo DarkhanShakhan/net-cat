@@ -2,8 +2,12 @@ package main
 
 import (
 	"bufio"
+	"fmt"
 	"log"
 	"net"
+	"net-cat/internal/service"
+	"strconv"
+	"strings"
 
 	"github.com/jroimartin/gocui"
 )
@@ -50,7 +54,6 @@ func main() {
 	}
 	defer g.Close()
 	g.Cursor = true
-	g.Mouse = true
 	u.layout(g)
 	if err := g.SetKeybinding("", gocui.KeyCtrlC, gocui.ModNone, quit); err != nil {
 		log.Panicln(err)
@@ -64,11 +67,11 @@ func main() {
 }
 
 func (u *User) getName(g *gocui.Gui, v *gocui.View) error {
-	u.name = v.Buffer()
+	u.name = v.Buffer()[:len(v.Buffer())-1]
 	g.DeleteView("username")
 	g.DeleteView("logo")
 	g.Cursor = false
-	u.conn.Write([]byte(u.name))
+	u.conn.Write([]byte(u.name + "\n"))
 	u.menu(g)
 	return nil
 }
@@ -79,13 +82,132 @@ func (u *User) menu(g *gocui.Gui) {
 	welcome.Frame = true
 	welcome.Wrap = true
 	welcome.Write([]byte("Welcome, " + u.name))
-
-	create, _ := g.SetView("create", 5, 8, 20, 12)
+	// g.CurrentView().BgColor = gocui.ColorGreen
+	create, _ := g.SetView("create", 5, 8, 20, 11)
 	// create.SelBgColor = gocui.ColorWhite
-	// create.Highlight = true
+	create.FgColor = gocui.ColorGreen
 	create.Frame = true
+	g.SetCurrentView("create")
+	g.CurrentView().BgColor = gocui.ColorGreen
 	create.Write([]byte("Create a chat"))
-	g.SetKeybinding("create", gocui.MouseLeft, gocui.ModNone, u.createchat)
+	g.SetKeybinding("create", gocui.KeyEnter, gocui.ModNone, u.createchat)
+
+	join, _ := g.SetView("join", 5, 12, 20, 15)
+	join.Frame = true
+	join.Write([]byte("Join a chat"))
+	join.FgColor = gocui.ColorGreen
+	g.SetKeybinding("join", gocui.KeyEnter, gocui.ModNone, u.showChats)
+
+	users, _ := g.SetView("users", 5, 16, 20, 19)
+	users.Frame = true
+	users.Write([]byte("Show all users"))
+	users.FgColor = gocui.ColorGreen
+	g.SetKeybinding("users", gocui.KeyEnter, gocui.ModNone, u.showUsers)
+
+	exit, _ := g.SetView("exit", 5, 20, 20, 23)
+	exit.Frame = true
+	exit.Write([]byte("Exit"))
+	exit.FgColor = gocui.ColorGreen
+	g.SetKeybinding("exit", gocui.KeyEnter, gocui.ModNone, quit)
+
+	for _, option := range options {
+		g.SetKeybinding(option, gocui.KeyArrowUp, gocui.ModNone, u.goUp)
+		g.SetKeybinding(option, gocui.KeyArrowDown, gocui.ModNone, u.goDown)
+	}
+}
+
+func (u *User) showChats(g *gocui.Gui, v *gocui.View) error {
+	v.BgColor = gocui.ColorDefault
+	u.conn.Write([]byte("/list\n"))
+	sh, _ := g.SetView("showChats", 30, 15, 75, 20)
+	g.SetViewOnTop("showChats")
+	g.SetCurrentView("showChats")
+	sh.Frame = true
+	g.SetKeybinding("showChats", gocui.KeyEnter, gocui.ModNone, u.CloseShowChats)
+
+	fmt.Fprintln(sh, "List of chats here:")
+	d, _ := u.reader.ReadString('\n')
+	t := strings.Split(d, " ")
+	nbr, _ := strconv.Atoi(t[0])
+	for i := 0; i < nbr; i++ {
+		r, _ := u.reader.ReadString('\n')
+		fmt.Fprint(sh, r)
+	}
+
+	return nil
+}
+func (u *User) CloseShowChats(g *gocui.Gui, v *gocui.View) error {
+	g.DeleteView("showChats")
+	g.SetCurrentView("join")
+	g.CurrentView().BgColor = gocui.ColorGreen
+	return nil
+}
+
+func (u *User) showUsers(g *gocui.Gui, v *gocui.View) error {
+	v.BgColor = gocui.ColorDefault
+	u.conn.Write([]byte("/users\n"))
+	sh, _ := g.SetView("showUsers", 30, 15, 75, 20)
+	g.SetViewOnTop("showUsers")
+	g.SetCurrentView("showUsers")
+	sh.Frame = true
+	sh.Write([]byte("List of users here: "))
+	g.SetKeybinding("showUsers", gocui.KeyEnter, gocui.ModNone, u.CloseShowUsers)
+
+	d, _ := u.reader.ReadString('\n')
+	t := strings.Split(d, " ")
+	nbr, _ := strconv.Atoi(t[0])
+	for i := 0; i < nbr; i++ {
+		r, _ := u.reader.ReadString('\n')
+		fmt.Fprint(sh, r)
+	}
+	return nil
+}
+
+func (u *User) CloseShowUsers(g *gocui.Gui, v *gocui.View) error {
+	g.DeleteView("showUsers")
+	g.SetCurrentView("users")
+	g.CurrentView().BgColor = gocui.ColorGreen
+	return nil
+}
+
+var options []string = []string{"create", "join", "users", "exit"}
+
+func (u *User) goDown(g *gocui.Gui, v *gocui.View) error {
+	from := v.Name()
+	var to string
+	for i, option := range options {
+		if from == option {
+			if i < len(options)-1 {
+				to = options[i+1]
+			} else {
+				to = options[0]
+			}
+			break
+		}
+	}
+	g.SetCurrentView(to)
+	v.BgColor = gocui.ColorDefault
+	g.CurrentView().BgColor = gocui.ColorGreen
+	return nil
+}
+
+func (u *User) goUp(g *gocui.Gui, v *gocui.View) error {
+	from := v.Name()
+	var to string
+	for i, option := range options {
+		if from == option {
+			if i != 0 {
+				to = options[i-1]
+			} else {
+				to = options[len(options)-1]
+			}
+			break
+		}
+	}
+	g.SetCurrentView(to)
+	v.BgColor = gocui.ColorDefault
+	g.CurrentView().BgColor = gocui.ColorGreen
+	return nil
 }
 
 func (u *User) createchat(g *gocui.Gui, v *gocui.View) error {
@@ -95,7 +217,6 @@ func (u *User) createchat(g *gocui.Gui, v *gocui.View) error {
 	chat.Editable = true
 	chat.SetCursor(0, 0)
 	g.Cursor = true
-	g.Mouse = false
 	g.SetKeybinding("createchat", gocui.KeyEnter, gocui.ModNone, u.ChatCreated)
 	return nil
 }
@@ -123,11 +244,20 @@ func (u *User) chatlayout(g *gocui.Gui) error {
 
 func (u *User) SendMessage(g *gocui.Gui, v *gocui.View) error {
 	msg := v.Buffer()
-	u.conn.Write([]byte(msg))
-	out, _ := g.View("output")
-	out.Write([]byte(msg))
-	v.Clear()
-	v.SetCursor(0, 0)
+	if msg != "" {
+		prefix := service.GetPrefix(u.name)
+		u.conn.Write([]byte(prefix + msg))
+		out, _ := g.View("output")
+		out.Write([]byte(msg))
+		v.Clear()
+		v.SetCursor(0, 0)
+	}
+	// prefix := service.GetPrefix(u.name)
+	// u.conn.Write([]byte(prefix + msg))
+	// out, _ := g.View("output")
+	// out.Write([]byte(msg))
+	// v.Clear()
+	// v.SetCursor(0, 0)
 	return nil
 }
 
