@@ -15,6 +15,8 @@ func (lobby *Lobby) ListChats(user i.User) {
 func (lobby *Lobby) ListUsers(user i.User) {
 	lobby.mu.Lock()
 	defer lobby.mu.Unlock()
+	title := fmt.Sprintf("%d user(s) online\n", len(lobby.users))
+	user.GetConn().Write([]byte(title))
 	for name, otherUser := range lobby.users {
 		user.GetConn().Write([]byte(name))
 		if name, ok := otherUser.GetRoomName(); ok {
