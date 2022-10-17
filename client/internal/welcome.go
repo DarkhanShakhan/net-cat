@@ -77,18 +77,20 @@ func (u *User) getName(g *gocui.Gui, v *gocui.View) error {
 	u.name = v.Buffer()
 	errLog, err := g.View("error")
 	if err != nil {
-		fmt.Println("here")
 		log.Fatal(err)
 	}
 	errLog.Clear()
 	if u.name == "" {
 		// FIXME:have to check for existence
 		fmt.Fprint(errLog, "empty name")
+	} else if len(u.name) > 0 && u.name[:len(u.name)-1] == "" {
+		fmt.Fprint(errLog, "empty name")
 	} else {
 		g.DeleteView("username")
 		g.DeleteView("logo")
 		g.Cursor = false
 		u.conn.Write([]byte(u.name))
+		u.name = u.name[:len(u.name)-1]
 		u.menuLayout(g)
 	}
 	return nil

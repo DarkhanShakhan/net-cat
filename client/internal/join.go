@@ -69,8 +69,10 @@ func (u *User) displayChats(g *gocui.Gui, rooms []string) error {
 		g.SetKeybinding(room, gocui.KeyArrowDown, gocui.ModNone, chMenu.goDownChat)
 		g.SetKeybinding(room, gocui.KeyEnter, gocui.ModNone, u.StartChat)
 	}
-	g.SetCurrentView(rooms[0])
-	g.CurrentView().BgColor = gocui.ColorGreen
+	if len(rooms) > 0 {
+		g.SetCurrentView(rooms[0])
+		g.CurrentView().BgColor = gocui.ColorGreen
+	}
 	return nil
 }
 

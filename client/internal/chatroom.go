@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"fmt"
 	"log"
+	"strings"
+	"time"
 
 	"github.com/jroimartin/gocui"
 )
@@ -23,10 +25,9 @@ func (u *User) StartChat(g *gocui.Gui, v *gocui.View) error {
 		if err != gocui.ErrUnknownView {
 			return err
 		}
-		// go u.read(v)
 	}
 	out, _ := g.View("output")
-	go u.read(out)
+	go u.read(g, out)
 	if tr, err := g.SetView("input", 2, maxY-7, maxX-2, maxY-4); err != nil {
 		if err != gocui.ErrUnknownView {
 			return err
@@ -44,26 +45,30 @@ func (u *User) sendMessage(g *gocui.Gui, v *gocui.View) error {
 	msg := v.Buffer()
 	if msg != "" {
 		u.conn.Write([]byte(msg + "\n"))
-		// u.reader.ReadString(':')
 		out, _ := g.View("output")
-		fmt.Fprint(out, msg)
+		fmt.Fprint(out, GetPrefix(u.name)+msg)
 		v.Clear()
 		v.SetCursor(0, 0)
 	}
 	return nil
 }
 
-func (u *User) read(v *gocui.View) {
+func (u *User) read(g *gocui.Gui, v *gocui.View) {
 	scanner := bufio.NewScanner(u.conn)
 	for scanner.Scan() {
 		msg := scanner.Text()
-		if msg[len(msg)-2:] == "]:" {
+		if strings.HasSuffix(msg, fmt.Sprintf("[%s]:", u.name[:len(u.name)])) {
 			continue
 		}
+		g.Update(func(g *gocui.Gui) error { return nil })
 		fmt.Fprintln(v, msg)
 	}
-	// for {
-	// 	msg, _ := u.reader.ReadString('\n')
-	// 	fmt.Fprint(v, msg)
-	// }
+}
+
+const (
+	TIME_FORMAT = "2006-01-02 15:04:05"
+)
+
+func GetPrefix(name string) string {
+	return fmt.Sprintf("[%s][%s]:", time.Now().Format(TIME_FORMAT), name)
 }
