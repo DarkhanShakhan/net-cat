@@ -15,9 +15,11 @@ type User struct {
 }
 
 func NewUser(conn net.Conn) *User {
-	return &User{conn: conn,
+	return &User{
+		conn:   conn,
 		reader: bufio.NewReader(conn),
-		writer: bufio.NewWriter(conn)}
+		writer: bufio.NewWriter(conn),
+	}
 }
 
 func (u *User) quit(g *gocui.Gui, v *gocui.View) error {

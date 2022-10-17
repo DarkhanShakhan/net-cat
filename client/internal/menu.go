@@ -16,7 +16,7 @@ func (u *User) menuLayout(g *gocui.Gui) error {
 	left, right := (maxX-15)/2, maxX-((maxX-15)/2)
 	top, _ := (maxY-18)/2, maxY-((maxY-18)/2)
 	g.Cursor = false
-	//menu title
+	// menu title
 	if v, err := g.SetView("title", left, top, right, top+2); err != nil {
 		if err != gocui.ErrUnknownView {
 			return err
@@ -50,6 +50,9 @@ func (u *User) menuLayout(g *gocui.Gui) error {
 	}
 
 	if err := g.SetKeybinding("", gocui.KeyCtrlC, gocui.ModNone, u.quit); err != nil {
+		log.Panicln(err)
+	}
+	if err := g.SetKeybinding("join", gocui.KeyEnter, gocui.ModNone, u.getChats); err != nil {
 		log.Panicln(err)
 	}
 	if err := g.SetKeybinding("exit", gocui.KeyEnter, gocui.ModNone, u.quit); err != nil {
@@ -117,9 +120,7 @@ func (u *User) getUsers(g *gocui.Gui, v *gocui.View) error {
 	if err != nil {
 		return err
 	}
-	for i := 0; i < nbr; i++ {
 
-	}
 	maxX, maxY := g.Size()
 	left, right := (maxX-20)/2, maxX-((maxX-20)/2)
 	top := (maxY - nbr - 1) / 2
@@ -138,14 +139,66 @@ func (u *User) getUsers(g *gocui.Gui, v *gocui.View) error {
 	}
 	g.SetViewOnTop("display")
 	g.SetCurrentView("display")
-	// g.CurrentView().BgColor = gocui.ColorGreen
 	g.SetKeybinding("display", gocui.KeyEnter, gocui.ModNone, u.closeDisplay)
 	return nil
 }
 
+// func (u *User) getChats(g *gocui.Gui, v *gocui.View) error {
+// 	v.BgColor = gocui.ColorDefault
+// 	u.conn.Write([]byte("/list\n"))
+// 	title, err := u.reader.ReadString('\n')
+// 	if err != nil {
+// 		return err
+// 	}
+// 	temp := strings.Split(title, " ")
+// 	nbr, err := strconv.Atoi(temp[0])
+// 	if err != nil {
+// 		return err
+// 	}
+// 	maxX, maxY := g.Size()
+// 	left, right := (maxX-20)/2, maxX-((maxX-20)/2)
+// 	top := (maxY - nbr - 1) / 2
+// 	d, err := g.SetView("display", left, top, right, top+2)
+// 	if err != gocui.ErrUnknownView {
+// 		return err
+// 	}
+// 	fmt.Fprint(d, title)
+// 	d.Frame = true
+// 	rooms := make([]string, nbr)
+// 	for i := 0; i < nbr; i++ {
+// 		room, err := u.reader.ReadString('\n')
+// 		if err != nil {
+// 			return err
+// 		}
+// 		rooms[i] = room
+// 		// fmt.Fprint(d, "-- "+room)
+// 	}
+// 	// fmt.Fprint(d, len(rooms))
+// 	from := top + 2
+// 	for i, room := range rooms {
+// 		if v, err := g.SetView(room, left, from+(i*2), right, from+(i+1)*2); err != nil {
+// 			if err != gocui.ErrUnknownView {
+// 				return err
+// 			}
+// 			g.SetKeybinding(room, gocui.KeyEnter, gocui.ModNone, u.closeDisplay)
+// 			fmt.Fprint(v, room)
+// 		}
+// 	}
+// 	if _, err := g.View(rooms[0]); err == nil {
+// 		g.SetCurrentView(rooms[0])
+// 		g.CurrentView().BgColor = gocui.ColorGreen
+// 	} else {
+// 		g.SetCurrentView("display")
+// 	}
+// 	// g.SetViewOnTop("display")
+// 	// g.SetCurrentView("display")
+// 	g.SetKeybinding("display", gocui.KeyEnter, gocui.ModNone, u.closeDisplay)
+// 	return nil
+// }
+
 func (u *User) closeDisplay(g *gocui.Gui, v *gocui.View) error {
-	g.DeleteView("display")
-	g.SetCurrentView("users")
+	g.DeleteView(v.Name())
+	g.SetCurrentView("create")
 	g.CurrentView().BgColor = gocui.ColorGreen
 	return nil
 }

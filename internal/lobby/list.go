@@ -7,6 +7,8 @@ import (
 )
 
 func (lobby *Lobby) ListChats(user i.User) {
+	title := fmt.Sprintf("%d chat(s) available\n", len(lobby.rooms))
+	user.GetConn().Write([]byte(title))
 	for key := range lobby.rooms {
 		fmt.Fprintln(user.GetConn(), key)
 	}

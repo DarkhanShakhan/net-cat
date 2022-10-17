@@ -73,7 +73,7 @@ func (lobby *Lobby) AskName(conn net.Conn) string {
 		return lobby.AskName(conn)
 	}
 	if lobby.UserExist(name) {
-		conn.Write([]byte("name has been taken"))
+		conn.Write([]byte("name has been taken\n"))
 		return lobby.AskName(conn)
 	}
 	return name[:len(name)-1]
