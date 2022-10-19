@@ -13,12 +13,12 @@ func InitGui(conn net.Conn) {
 		log.Fatal(err)
 	}
 	defer g.Close()
-	g.Cursor = true
+	g.Mouse = true
 	g.Highlight = true
 	g.SelFgColor = gocui.ColorGreen
 
-	input := NewInputWidget()
-	output := NewOutputWidget()
+	input := NewInputWidget(conn)
+	output := NewOutputWidget(conn)
 	options := NewOptionsWidget()
 
 	g.SetManager(input, output, options)
@@ -43,6 +43,11 @@ func toggle(g *gocui.Gui, v *gocui.View) error {
 	if v != nil {
 		curr := v.Name()
 		next := widgets[curr]
+		if next == "output" {
+			g.Mouse = true
+		} else {
+			g.Mouse = false
+		}
 		g.SetCurrentView(next)
 	} else {
 		g.SetCurrentView("input")

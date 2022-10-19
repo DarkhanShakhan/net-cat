@@ -1,6 +1,8 @@
 package internal
 
 import (
+	"bufio"
+	"fmt"
 	"net"
 
 	"github.com/jroimartin/gocui"
@@ -11,8 +13,8 @@ type OutputWidget struct {
 	conn     net.Conn
 }
 
-func NewOutputWidget() *OutputWidget {
-	return &OutputWidget{}
+func NewOutputWidget(conn net.Conn) *OutputWidget {
+	return &OutputWidget{conn: conn}
 }
 
 func (out *OutputWidget) Layout(g *gocui.Gui) error {
@@ -23,8 +25,18 @@ func (out *OutputWidget) Layout(g *gocui.Gui) error {
 			return err
 		}
 	}
-	g.Cursor = false
 	v.Autoscroll = true
 	v.Wrap = true
+	go out.Read(g)
 	return nil
+}
+
+func (out *OutputWidget) Read(g *gocui.Gui) {
+	scanner := bufio.NewScanner(out.conn)
+	v, _ := g.View("output")
+	for scanner.Scan() {
+		msg := scanner.Text()
+		fmt.Fprintln(v, msg)
+		g.Update(func(*gocui.Gui) error { return nil })
+	}
 }

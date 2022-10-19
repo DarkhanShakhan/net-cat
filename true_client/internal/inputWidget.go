@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"fmt"
 	"net"
 
 	"github.com/jroimartin/gocui"
@@ -11,8 +12,8 @@ type InputWidget struct {
 	conn     net.Conn
 }
 
-func NewInputWidget() *InputWidget {
-	return &InputWidget{}
+func NewInputWidget(conn net.Conn) *InputWidget {
+	return &InputWidget{conn: conn}
 }
 
 func (in *InputWidget) Layout(g *gocui.Gui) error {
@@ -25,6 +26,14 @@ func (in *InputWidget) Layout(g *gocui.Gui) error {
 	}
 	v.Editable = true
 	v.Wrap = true
-	// g.SetCurrentView("input")
+	g.SetKeybinding("input", gocui.KeyEnter, gocui.ModNone, in.sendMsg)
+	return nil
+}
+
+func (in *InputWidget) sendMsg(g *gocui.Gui, v *gocui.View) error {
+	msg := v.Buffer()
+	v.Clear()
+	v.SetCursor(0, 0)
+	fmt.Fprintln(in.conn, msg)
 	return nil
 }
