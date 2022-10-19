@@ -23,6 +23,7 @@ func (out *OutputWidget) Layout(g *gocui.Gui) error {
 			return err
 		}
 	}
+	g.Cursor = false
 	v.Autoscroll = true
 	v.Wrap = true
 	return nil

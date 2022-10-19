@@ -40,11 +40,12 @@ func quit(g *gocui.Gui, v *gocui.View) error {
 
 func toggle(g *gocui.Gui, v *gocui.View) error {
 	widgets := map[string]string{"input": "options", "options": "output", "output": "input"}
-	curr := v.Name()
-	if curr != "" {
+	if v != nil {
+		curr := v.Name()
 		next := widgets[curr]
+		g.SetCurrentView(next)
+	} else {
+		g.SetCurrentView("input")
 	}
-	g.SetCurrentView("output")
-
 	return nil
 }
