@@ -58,11 +58,12 @@ func (room *Chatroom) broadcastInfo(info, name string) {
 }
 
 func (room *Chatroom) ListUsers(user i.User) {
+	user.GetConn().Write([]byte("\n"))
 	for name := range room.users {
 		user.GetConn().Write([]byte(name))
 		user.GetConn().Write([]byte("\n"))
 	}
-	user.GetConn().Write([]byte(service.GetPrefix(user.GetName()) + "\n"))
+	user.GetConn().Write([]byte(service.GetPrefix(user.GetName())))
 }
 
 func (room *Chatroom) LogMessage(message string) {

@@ -1,7 +1,6 @@
 package lobby
 
 import (
-	"fmt"
 	i "net-cat/internal/userInterface"
 	"strings"
 )
@@ -15,6 +14,14 @@ const (
 	CMD_USERS  = CMD + "users"
 	CMD_HELP   = CMD + "help"
 	CMD_DIRECT = CMD + "direct"
+)
+
+const (
+	NON_EXIST_CMD  = "this command doesn't work here\n"
+	ROOM_PREFIX    = "the chat with a given name "
+	NON_EXIST_ROOM = ROOM_PREFIX + "doesn't exist\n"
+	EXIST_ROOM     = ROOM_PREFIX + "exists\n"
+	FULL_ROOM      = ROOM_PREFIX + "is full\n"
 )
 
 type Command struct {
@@ -42,46 +49,38 @@ func (lobby *Lobby) SendCommand(command string, user i.User) {
 	}
 }
 
-// func (lobby *Lobby) validCommand(command string, user i.User) bool {
-// 	switch {
-// 	}
-// }
-
 func (lobby *Lobby) ParseCommand(cmd Command) {
 	switch cmd.command {
 	case CMD_LIST:
-		lobby.ListChats(cmd.user)
+		if _, ok := cmd.user.GetRoomName(); ok {
+			cmd.user.GetConn().Write([]byte(NON_EXIST_CMD))
+		} else {
+			lobby.ListChats(cmd.user)
+		}
 	case CMD_USERS:
 		if name, ok := cmd.user.GetRoomName(); ok {
 			lobby.GetChatroom(name).ListUsers(cmd.user)
 		} else {
 			lobby.ListUsers(cmd.user)
 		}
-	case CMD_DIRECT:
-		to := lobby.users[cmd.name]
-		toChatName, toOk := to.GetRoomName()
-		fromChatName, fromOk := cmd.user.GetRoomName()
-		if fromOk && toOk && toChatName == fromChatName {
-			fmt.Fprintln(to.GetConn())
-			fmt.Fprintln(to.GetConn(), "[DIRECT]"+cmd.message.prefix+cmd.message.text)
-			fmt.Fprint(cmd.user.GetConn(), cmd.message.prefix)
-			fmt.Fprint(to.GetConn(), cmd.message.prefix)
-		}
 	case CMD_LEAVE:
-		name, _ := cmd.user.GetRoomName()
-		lobby.GetChatroom(name).DeleteUser(cmd.user)
+		if name, ok := cmd.user.GetRoomName(); ok {
+			lobby.GetChatroom(name).DeleteUser(cmd.user)
+		} else {
+			cmd.user.GetConn().Write([]byte(NON_EXIST_CMD))
+		}
 	case CMD_JOIN:
 		room, ok := lobby.rooms[cmd.name]
 		if !ok {
-			cmd.user.GetConn().Write([]byte("the chat with a given name doesn't exist, but you can create one using command /create roomname\n"))
+			cmd.user.GetConn().Write([]byte(NON_EXIST_ROOM))
 		} else if room.IsFull() {
-			cmd.user.GetConn().Write([]byte("The Chat is full, join later or create a new one\n"))
+			cmd.user.GetConn().Write([]byte(FULL_ROOM))
 		} else {
 			lobby.rooms[cmd.name].AddUser(cmd.user)
 		}
 	case CMD_CREATE:
 		if !lobby.CreateChatroom(cmd.name) {
-			cmd.user.GetConn().Write([]byte("The chat with a given name exists\n"))
+			cmd.user.GetConn().Write([]byte(EXIST_ROOM))
 		} else {
 			lobby.GetChatroom(cmd.name).AddUser(cmd.user)
 		}

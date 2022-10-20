@@ -54,12 +54,12 @@ func (lobby *Lobby) AddUser(user i.User) {
 }
 
 func (lobby *Lobby) PrintLogo(conn net.Conn) {
-	// lobby.mu.Lock()
+	lobby.mu.Lock()
 	if LOGO == "" {
 		LOGO = service.ParseLogo()
 	}
 	conn.Write([]byte(LOGO + "\n"))
-	// lobby.mu.Unlock()
+	lobby.mu.Unlock()
 }
 
 func (lobby *Lobby) AskName(conn net.Conn) string {

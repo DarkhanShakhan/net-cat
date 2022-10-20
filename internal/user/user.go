@@ -1,6 +1,7 @@
 package user
 
 import (
+	"fmt"
 	"net"
 )
 
@@ -11,6 +12,8 @@ type User struct {
 }
 
 func NewUser(name string, conn net.Conn) *User {
+	greet := fmt.Sprintf("Hello, %s!\n", name)
+	conn.Write([]byte(greet))
 	return &User{name: name, conn: conn}
 }
 
