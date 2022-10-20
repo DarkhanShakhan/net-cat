@@ -74,7 +74,7 @@ func (u *User) welcomeLayout(g *gocui.Gui) error {
 }
 
 func (u *User) getName(g *gocui.Gui, v *gocui.View) error {
-	u.name = v.Buffer()
+	u.name = v.ViewBuffer()
 	errLog, err := g.View("error")
 	if err != nil {
 		log.Fatal(err)
