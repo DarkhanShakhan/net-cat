@@ -43,6 +43,15 @@ func (u *User) keybindings(g *gocui.Gui) {
 	if err := g.SetKeybinding("options", gocui.KeyEnter, gocui.ModNone, u.command); err != nil {
 		log.Panicln(err)
 	}
+	if err := g.SetKeybinding("output", gocui.KeyArrowDown, gocui.ModNone, goDown); err != nil {
+		log.Panicln(err)
+	}
+	if err := g.SetKeybinding("output", gocui.KeyArrowUp, gocui.ModNone, goUp); err != nil {
+		log.Panicln(err)
+	}
+	if err := g.SetKeybinding("output", gocui.KeyEnter, gocui.ModNone, u.commandJoin); err != nil {
+		log.Panicln(err)
+	}
 	if err := g.SetKeybinding("create", gocui.KeyEnter, gocui.ModNone, u.createChat); err != nil {
 		log.Panicln(err)
 	}

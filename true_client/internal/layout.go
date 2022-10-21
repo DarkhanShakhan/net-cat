@@ -70,7 +70,15 @@ func (u *User) layout(g *gocui.Gui) error {
 		}
 		v.Frame = false
 		g.SetViewOnBottom("create")
-
+	}
+	if v, err := g.SetView("join", maxX/2-15, maxY/2-3, maxX/2+15, maxY/2+3); err != nil {
+		if err != nil {
+			if err != gocui.ErrUnknownView {
+				return err
+			}
+		}
+		v.Frame = false
+		g.SetViewOnBottom("join")
 	}
 	go u.Read(g)
 	return nil
@@ -90,6 +98,9 @@ func toggle(g *gocui.Gui, v *gocui.View) error {
 		c.SetCursor(0, 0)
 	}
 	if curr == "options" {
+		v.Highlight = false
+	}
+	if curr == "output" {
 		v.Highlight = false
 	}
 	g.SetViewOnTop(next)
@@ -118,6 +129,9 @@ func (u *User) Read(g *gocui.Gui) {
 			v.Clear()
 			fmt.Fprintln(v, "go to options and choose one of the given")
 			g.Update(func(*gocui.Gui) error { return nil })
+			continue
+		}
+		if strings.HasSuffix(msg, "chat(s) available") {
 			continue
 		}
 		if !strings.HasSuffix(msg, "]:") {
@@ -158,17 +172,55 @@ func goUp(g *gocui.Gui, v *gocui.View) error {
 func (u *User) command(g *gocui.Gui, v *gocui.View) error {
 	word, _ := v.Word(v.Cursor())
 	output, _ := g.View("output")
-	output.Clear()
+	// output.Clear()
 	switch word {
 	case "Display":
 		fmt.Fprintln(u.conn, "/users")
 	case "Quit":
 		return gocui.ErrQuit
 	case "Create":
+		output.Clear()
 		v.Highlight = false
 		// createChat(g)
 		g.Update(createChat)
+	case "Join":
+		output.Clear()
+		v.Highlight = false
+		fmt.Fprintln(u.conn, "/list")
+		g.Update(u.joinChat)
+	case "Leave":
+		output.Clear()
+		u.clearBuffer()
+		fmt.Fprintln(u.conn, "/leave")
 	}
+	return nil
+}
+func (u *User) commandJoin(g *gocui.Gui, v *gocui.View) error {
+	_, y := v.Cursor()
+	word, _ := v.Line(y)
+	if word != "" {
+		v.Clear()
+		fmt.Fprintln(u.conn, "/join "+word)
+		g.SetCurrentView("input")
+	}
+	v.Highlight = false
+	g.DeleteKeybindings("output")
+
+	return nil
+}
+
+func roomOptions(g *gocui.Gui) error {
+	v, _ := g.View("options")
+	fmt.Fprintln(v, "Display users")
+	fmt.Fprintln(v, "Leave the chat")
+	return nil
+}
+
+func (u *User) joinChat(g *gocui.Gui) error {
+	v, _ := g.View("output")
+	g.SetCurrentView("output")
+	v.Highlight = true
+	v.SetCursor(0, 0)
 	return nil
 }
 
@@ -180,7 +232,4 @@ func createChat(g *gocui.Gui) error {
 	v.Editable = true
 	v.Title = "Enter chat name"
 	return nil
-	// g.Update()
-	// g.SetCurrentView("display")
-	// g.SetViewOnTop("display")
 }
