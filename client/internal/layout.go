@@ -119,7 +119,7 @@ func (u *User) Read(g *gocui.Gui) {
 				v.Clear()
 				input, _ := g.View("input")
 				input.Title = "Input"
-				u.menu(g)
+				g.Update(lobbyOptions)
 			}
 		}
 		if msg == "use commands in the lobby, starting with '/'" {
@@ -131,7 +131,14 @@ func (u *User) Read(g *gocui.Gui) {
 			g.Update(func(*gocui.Gui) error { return nil })
 			continue
 		}
-		if strings.HasSuffix(msg, "chat(s) available") {
+		if strings.HasPrefix(msg, "Joining ") {
+			g.Update(roomOptions)
+			u.chatroom = true
+			continue
+		}
+		if strings.HasPrefix(msg, "Leaving ") {
+			g.Update(lobbyOptions)
+			u.chatroom = false
 			continue
 		}
 		if !strings.HasSuffix(msg, "]:") {
@@ -141,12 +148,27 @@ func (u *User) Read(g *gocui.Gui) {
 	}
 }
 
-func (u *User) menu(g *gocui.Gui) {
+func roomOptions(g *gocui.Gui) error {
+	out, _ := g.View("output")
+	out.SetOrigin(0, 0)
 	v, _ := g.View("options")
+	v.Clear()
+	fmt.Fprintln(v, "Users")
+	fmt.Fprintln(v, "Leave the chat")
+	return nil
+}
+
+func lobbyOptions(g *gocui.Gui) error {
+	out, _ := g.View("output")
+	out.SetOrigin(0, 0)
+	v, _ := g.View("options")
+	v.Clear()
 	fmt.Fprintln(v, "Create a chat")
 	fmt.Fprintln(v, "Join a chat")
-	fmt.Fprintln(v, "Display users")
+	fmt.Fprintln(v, "Users")
+	fmt.Fprintln(v, "Chats")
 	fmt.Fprintln(v, "Quit")
+	return nil
 }
 
 func goDown(g *gocui.Gui, v *gocui.View) error {
@@ -172,60 +194,28 @@ func goUp(g *gocui.Gui, v *gocui.View) error {
 func (u *User) command(g *gocui.Gui, v *gocui.View) error {
 	word, _ := v.Word(v.Cursor())
 	output, _ := g.View("output")
-	// output.Clear()
 	switch word {
-	case "Display":
+	case "Users":
 		fmt.Fprintln(u.conn, "/users")
+	case "Chats":
+		fmt.Fprintln(u.conn, "/list")
 	case "Quit":
 		return gocui.ErrQuit
-	case "Create":
+	case "Create", "Join":
 		output.Clear()
 		v.Highlight = false
-		// createChat(g)
+		u.cmd = "/" + strings.ToLower(word)
 		g.Update(createChat)
-	case "Join":
-		output.Clear()
-		v.Highlight = false
-		fmt.Fprintln(u.conn, "/list")
-		g.Update(u.joinChat)
 	case "Leave":
 		output.Clear()
-		u.clearBuffer()
 		fmt.Fprintln(u.conn, "/leave")
 	}
-	return nil
-}
-func (u *User) commandJoin(g *gocui.Gui, v *gocui.View) error {
-	_, y := v.Cursor()
-	word, _ := v.Line(y)
-	if word != "" {
-		v.Clear()
-		fmt.Fprintln(u.conn, "/join "+word)
-		g.SetCurrentView("input")
-	}
-	v.Highlight = false
-	g.DeleteKeybindings("output")
-
-	return nil
-}
-
-func roomOptions(g *gocui.Gui) error {
-	v, _ := g.View("options")
-	fmt.Fprintln(v, "Display users")
-	fmt.Fprintln(v, "Leave the chat")
-	return nil
-}
-
-func (u *User) joinChat(g *gocui.Gui) error {
-	v, _ := g.View("output")
-	g.SetCurrentView("output")
-	v.Highlight = true
-	v.SetCursor(0, 0)
 	return nil
 }
 
 func createChat(g *gocui.Gui) error {
 	v, _ := g.View("create")
+	v.SetCursor(0, 0)
 	g.SetCurrentView("create")
 	g.SetViewOnTop("create")
 	v.Frame = true
