@@ -1,6 +1,7 @@
 package lobby
 
 import (
+	"net-cat/internal/service"
 	i "net-cat/internal/userInterface"
 	"strings"
 )
@@ -23,6 +24,7 @@ const (
 	FULL_ROOM      = ROOM_PREFIX + "is full\n"
 	INVALID_CMD    = "invalid command\n"
 	INVALID_ARG    = "too many arguments\n"
+	INVALID_NAME   = "invalid chat name\n"
 )
 
 type Command struct {
@@ -41,13 +43,25 @@ func (lobby *Lobby) SendCommand(command string, user i.User) {
 	case CMD_HELP, CMD_LIST, CMD_USERS, CMD_LEAVE:
 		if len(temp) > 1 {
 			user.GetConn().Write([]byte(INVALID_ARG))
+			if _, ok := user.GetRoomName(); ok {
+				user.GetConn().Write([]byte(service.GetPrefix(user.GetName())))
+			}
 		} else {
 			lobby.cmdChannel <- NewCommand(command, "", user)
 		}
 	case CMD_JOIN, CMD_CREATE:
-		lobby.cmdChannel <- NewCommand(temp[0], strings.Join(temp[1:], " "), user)
+		name := strings.Join(temp[1:], " ")
+		if service.ValidInput(name) {
+			lobby.cmdChannel <- NewCommand(temp[0], name, user)
+		} else {
+			user.GetConn().Write([]byte(INVALID_NAME))
+		}
+
 	default:
 		user.GetConn().Write([]byte(INVALID_CMD))
+		if _, ok := user.GetRoomName(); ok {
+			user.GetConn().Write([]byte(service.GetPrefix(user.GetName())))
+		}
 	}
 }
 

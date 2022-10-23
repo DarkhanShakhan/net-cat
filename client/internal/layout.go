@@ -71,15 +71,6 @@ func (u *User) layout(g *gocui.Gui) error {
 		v.Frame = false
 		g.SetViewOnBottom("create")
 	}
-	if v, err := g.SetView("join", maxX/2-15, maxY/2-3, maxX/2+15, maxY/2+3); err != nil {
-		if err != nil {
-			if err != gocui.ErrUnknownView {
-				return err
-			}
-		}
-		v.Frame = false
-		g.SetViewOnBottom("join")
-	}
 	go u.Read(g)
 	return nil
 }

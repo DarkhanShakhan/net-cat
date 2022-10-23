@@ -17,7 +17,6 @@ var CONN_PORT = "8989"
 
 func main() {
 	if len(os.Args) == 2 {
-		// FIXME: check errors(nbr of args, correct conn port)
 		CONN_PORT = os.Args[1]
 	}
 	if len(os.Args) > 2 {

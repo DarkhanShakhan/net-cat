@@ -2,7 +2,6 @@ package lobby
 
 import (
 	"bufio"
-	"log"
 	"net"
 	"net-cat/internal/chatroom"
 	"net-cat/internal/service"
@@ -28,7 +27,10 @@ func NewLobby() *Lobby {
 func (lobby *Lobby) HandleUser(conn net.Conn) {
 	defer conn.Close()
 	lobby.PrintLogo(conn)
-	username := lobby.AskName(conn)
+	username, err := lobby.AskName(conn)
+	if err != nil {
+		return
+	}
 	user := user.NewUser(username, conn)
 	lobby.AddUser(user)
 	flow := bufio.NewScanner(conn)
@@ -39,6 +41,9 @@ func (lobby *Lobby) HandleUser(conn net.Conn) {
 	lobby.mu.Lock()
 	if name, ok := user.GetRoomName(); ok {
 		lobby.GetChatroom(name).DeleteUser(user)
+		if lobby.GetChatroom(name).IsEmpty() {
+			lobby.DeleteChatroom(name)
+		}
 	}
 	delete(lobby.users, user.GetName())
 	lobby.mu.Unlock()
@@ -59,13 +64,13 @@ func (lobby *Lobby) PrintLogo(conn net.Conn) {
 	lobby.mu.Unlock()
 }
 
-func (lobby *Lobby) AskName(conn net.Conn) string {
+func (lobby *Lobby) AskName(conn net.Conn) (string, error) {
 	conn.Write([]byte("Enter your name:"))
 	name, err := bufio.NewReader(conn).ReadString('\n')
 	if err != nil {
-		log.Fatal(err)
+		return "", err
 	}
-	if name[:len(name)-1] == "" {
+	if !service.ValidInput(name[:len(name)-1]) {
 		conn.Write([]byte("name cannot be empty\n"))
 		return lobby.AskName(conn)
 	}
@@ -73,7 +78,7 @@ func (lobby *Lobby) AskName(conn net.Conn) string {
 		conn.Write([]byte("name has been taken\n"))
 		return lobby.AskName(conn)
 	}
-	return name[:len(name)-1]
+	return name[:len(name)-1], nil
 }
 
 func (lobby *Lobby) UserExist(name string) bool {
@@ -84,6 +89,9 @@ func (lobby *Lobby) UserExist(name string) bool {
 }
 
 func (lobby *Lobby) CreateChatroom(name string) bool {
+	if !service.ValidInput(name) {
+		return false
+	}
 	if _, ok := lobby.rooms[name]; ok {
 		return false
 	}

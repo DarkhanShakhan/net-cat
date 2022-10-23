@@ -31,7 +31,7 @@ func NewUser(conn net.Conn) *User {
 func (u *User) sendChatname(g *gocui.Gui, v *gocui.View) error {
 	name := v.Buffer()
 	if !isEmpty(name) {
-		fmt.Fprintln(u.conn, u.cmd+" "+name)
+		fmt.Fprint(u.conn, u.cmd+" "+name)
 		g.SetCurrentView("input")
 	} else {
 		g.SetCurrentView("options")
