@@ -13,7 +13,6 @@ const (
 	CMD_LEAVE  = CMD + "leave"
 	CMD_USERS  = CMD + "users"
 	CMD_HELP   = CMD + "help"
-	CMD_DIRECT = CMD + "direct"
 )
 
 const (
@@ -22,30 +21,33 @@ const (
 	NON_EXIST_ROOM = ROOM_PREFIX + "doesn't exist\n"
 	EXIST_ROOM     = ROOM_PREFIX + "exists\n"
 	FULL_ROOM      = ROOM_PREFIX + "is full\n"
+	INVALID_CMD    = "invalid command\n"
+	INVALID_ARG    = "too many arguments\n"
 )
 
 type Command struct {
 	command string
 	name    string
-	message Message
 	user    i.User
 }
 
-func NewCommand(command string, name string, user i.User, message Message) Command {
-	return Command{command: command, name: name, user: user, message: message}
+func NewCommand(command string, name string, user i.User) Command {
+	return Command{command: command, name: name, user: user}
 }
 
-// FIXME: parsing commands and replying to invalid commands
 func (lobby *Lobby) SendCommand(command string, user i.User) {
 	temp := strings.Split(command, " ")
-
-	switch len(temp) {
-	case 1:
-		lobby.cmdChannel <- NewCommand(command, "", user, Message{})
-	case 2:
-		lobby.cmdChannel <- NewCommand(temp[0], temp[1], user, Message{})
-	case 3:
-		lobby.cmdChannel <- NewCommand(temp[0], temp[1], user, NewMessage(strings.Join(temp[2:], " "), user))
+	switch temp[0] {
+	case CMD_HELP, CMD_LIST, CMD_USERS, CMD_LEAVE:
+		if len(temp) > 1 {
+			user.GetConn().Write([]byte(INVALID_ARG))
+		} else {
+			lobby.cmdChannel <- NewCommand(command, "", user)
+		}
+	case CMD_JOIN, CMD_CREATE:
+		lobby.cmdChannel <- NewCommand(temp[0], strings.Join(temp[1:], " "), user)
+	default:
+		user.GetConn().Write([]byte(INVALID_CMD))
 	}
 }
 
@@ -66,6 +68,9 @@ func (lobby *Lobby) ParseCommand(cmd Command) {
 	case CMD_LEAVE:
 		if name, ok := cmd.user.GetRoomName(); ok {
 			lobby.GetChatroom(name).DeleteUser(cmd.user)
+			if lobby.GetChatroom(name).IsEmpty() {
+				lobby.DeleteChatroom(name)
+			}
 		} else {
 			cmd.user.GetConn().Write([]byte(NON_EXIST_CMD))
 		}

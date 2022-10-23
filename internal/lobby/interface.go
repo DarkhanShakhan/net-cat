@@ -9,6 +9,7 @@ type Chatroom interface {
 	ListUsers(i.User)
 	DisplayLog(i.User)
 	IsFull() bool
+	IsEmpty() bool
 	AddUser(i.User)
 	GetChatName() string
 	GetUsers() map[string]i.User

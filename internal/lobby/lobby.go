@@ -13,9 +13,6 @@ import (
 
 var LOGO = ""
 
-// TODO: handle errors
-// TODO: unit tests
-// TODO: mutexes
 type Lobby struct {
 	mu         sync.Mutex
 	rooms      map[string]Chatroom
@@ -92,6 +89,10 @@ func (lobby *Lobby) CreateChatroom(name string) bool {
 	}
 	lobby.rooms[name] = chatroom.NewChatroom(name)
 	return true
+}
+
+func (lobby *Lobby) DeleteChatroom(name string) {
+	delete(lobby.rooms, name)
 }
 
 func (lobby *Lobby) GetChatroom(name string) Chatroom {

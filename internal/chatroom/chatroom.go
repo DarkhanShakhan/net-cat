@@ -11,7 +11,6 @@ const (
 	INFO_JOIN  = " has joined the chatroom"
 )
 
-// TODO:unit test
 type Chatroom struct {
 	name  string
 	users map[string]i.User
@@ -44,6 +43,10 @@ func (room *Chatroom) AddUser(user i.User) {
 
 func (room *Chatroom) IsFull() bool {
 	return len(room.users) == 10
+}
+
+func (room *Chatroom) IsEmpty() bool {
+	return len(room.users) == 0
 }
 
 func (room *Chatroom) DeleteUser(user i.User) {

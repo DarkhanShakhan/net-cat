@@ -6,6 +6,7 @@ import (
 	"net"
 	"net-cat/internal/lobby"
 	"os"
+	"strconv"
 )
 
 const (
@@ -23,9 +24,11 @@ func main() {
 		fmt.Println(USAGE)
 		return
 	} else if len(os.Args) == 2 {
+		if !validPort(os.Args[1]) {
+			log.Fatal("invalid port")
+		}
 		CONN_PORT = os.Args[1]
 	}
-	//TODO:check port number
 
 	listener, err := net.Listen(CONN_TYPE, "localhost:"+CONN_PORT)
 	if err != nil {
@@ -43,4 +46,12 @@ func main() {
 		}
 		go lobby.HandleUser(conn)
 	}
+}
+
+func validPort(port string) bool {
+	_, err := strconv.Atoi(port)
+	if err != nil {
+		return false
+	}
+	return len(port) == 4
 }
