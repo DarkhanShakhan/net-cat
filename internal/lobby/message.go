@@ -18,6 +18,7 @@ func NewMessage(text string, user i.User) Message {
 func (lobby *Lobby) BroadcastMsg(msg Message) {
 	name, _ := msg.user.GetRoomName()
 	chat := lobby.GetChatroom(name)
+	lobby.mu.Lock()
 	for key, otherUser := range chat.GetUsers() {
 		if key != msg.user.GetName() {
 			otherUser.GetConn().Write([]byte("\n"))
@@ -27,5 +28,7 @@ func (lobby *Lobby) BroadcastMsg(msg Message) {
 			otherUser.GetConn().Write([]byte(msg.prefix))
 		}
 	}
+
 	chat.LogMessage(msg.prefix + msg.text)
+	lobby.mu.Unlock()
 }
